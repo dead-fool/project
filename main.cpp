@@ -1,3 +1,4 @@
+
 #include <iostream>
 
 #include "Game.h"
@@ -30,7 +31,8 @@ int main()
 		{
 		
 			while(!game.StartScreen)
-			{//Update
+			{	
+				//Update
 				game.update();
 				if(game.GameOver)
 				{ 
@@ -40,6 +42,7 @@ int main()
 				game.render();
 			}
 		}
+		
 		if(game.GameOver)
 		{
 			
@@ -50,3 +53,17 @@ int main()
 	//End of application
 	return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,7 +1,35 @@
 
+
 #include "Game.h"
 #include <random>
 #include <ctime>
+//Constructors / Destructors
+Game::Game()
+{   
+	this->initCoordinatevariables();
+	
+	this->initVariables();
+	this->initWindow();
+	this->initSounds();
+	
+//	this->initFonts();
+//	this->initText();
+	
+    this->initBackground();
+    this->initDoodle();
+}
+//Game::Game(float b){
+//	
+//	last_pos=b;
+//	new_pos=last_pos+200;
+//}
+
+Game::~Game()
+{
+	delete this->window;
+}
+
+
 //Private functions
 
 void Game::initCoordinatevariables()
@@ -27,6 +55,11 @@ void Game::initVariables()
     this->GameOver=false;
     this->check_Base=true;
     this->agentChoice=false;
+    this->highscored = false;
+    
+    this->isEnemy = false;
+    float enemyposX = 300;
+    float enemyposY = 700;
     
     this->doodle_direction = 1;
     
@@ -34,14 +67,18 @@ void Game::initVariables()
 	this->mainmenu_choice = 1;
     this->agent_type = 1;
     this->nop = 8;
-    
+    this->level_plat_count=0;
     this->score = 0;
     this->firstjump = false;
-    
-    this->plat_velocityX = 0.5;
-    int movement_check[] = {0,0,0,0,0,0,0,0};
+    for (int i=0;i<8;i++)
+    {
+    	this->plat_velocityX[i]=1;
+    	this->movement_check[i]=0;
+	}
     this->getHighscore();
-
+    this->random=0;
+    this->difficulty=0;
+    this->generated_plat_count=0;
 
 	
 	
@@ -54,22 +91,30 @@ void Game::resetvariables()
     this->GameOver=false;
     this->check_Base=true;
     this->agentChoice=false;
+    this->isEnemy = false;
+    float enemyposX = 300;
+    float enemyposY = 700;
+    this->highscored = false;
     
     this->doodle_direction = 1;
     
     this->gameover_choice = 1;
 	this->mainmenu_choice = 1;
     this->nop = 8;
-    
+    this->level_plat_count=0;
     this->score = 0;
     this->firstjump = false;
-    
-    this->plat_velocityX = 0.5;
-    int movement_check[] = {0,0,0,0,0,0,0,0};
-    
+   for (int i=0;i<8;i++)
+    {
+    	this->plat_velocityX[i]=1;
+    	this->movement_check[i]=0;
+	}
     this->initCoordinatevariables();
     
     this->getHighscore();
+    this->random=0;
+    this->difficulty=0;
+    this->generated_plat_count=0;
 }
 
 void Game::getHighscore()
@@ -91,7 +136,8 @@ void Game::getHighscore()
 	}
 	catch(int x)
 	{
-		this->highscore = 0;		
+		this->highscore = 0;	
+		this->highscored = true;	
 		std::ofstream scorefile;
 		scorefile.open("highscore.dat", std::ios::binary);
 		scorefile.write(reinterpret_cast<char*>(&highscore),sizeof(highscore));
@@ -106,12 +152,10 @@ void Game::initWindow()
 	this->videoMode.height = 800;
 	this->videoMode.width = 600;
 	
-	this->window = new sf::RenderWindow(this->videoMode, "Game 1", sf::Style::Titlebar | sf::Style::Close);
+	this->window = new sf::RenderWindow(this->videoMode, "Futta Mathi", sf::Style::Titlebar | sf::Style::Close);
 
 	this->window->setFramerateLimit(240);
-	
-	this->initSounds();
-	
+		
 }
 
 void Game::initSounds()
@@ -142,6 +186,10 @@ void Game::initSounds()
 	this->jump_sfx.setLoop(false);
 	this->jump_sfx.setVolume(50);	
 	
+	this->buffer_highscore.loadFromFile("audio/highscore.ogg");
+	this->highscore_sfx.setBuffer(buffer_highscore);
+	this->highscore_sfx.setLoop(false);
+	this->highscore_sfx.setVolume(70);
 }
 
 void Game::initBackground()
@@ -181,29 +229,6 @@ void Game::initDoodle()
 //	
 //}
 
-//Constructors / Destructors
-Game::Game()
-{   
-	this->initCoordinatevariables();
-	
-	this->initVariables();
-	this->initWindow();
-//	this->initFonts();
-//	this->initText();
-	
-    this->initBackground();
-    this->initDoodle();
-}
-//Game::Game(float b){
-//	
-//	last_pos=b;
-//	new_pos=last_pos+200;
-//}
-
-Game::~Game()
-{
-	delete this->window;
-}
 
 
 //Accessors
@@ -241,12 +266,12 @@ void Game::pollEvents()
 			if (this->ev.key.code == sf::Keyboard::Left)
 			{
 				this->doodle_direction = 0;
-				this->new_pos_x -= 6;
+				this->new_pos_x -= 10;
 			}
 			if (this->ev.key.code == sf::Keyboard::Right)
 			{
 				this->doodle_direction = 1;
-				this->new_pos_x += 6;
+				this->new_pos_x += 10;
 			}
 			
 			if (this->ev.key.code == sf::Keyboard::P)
@@ -442,8 +467,10 @@ void Game::mainmenu()
 						this->endGame = true;
 						this->closewindow();
 					}
+			this->window->clear();
 				
-				}
+		}
+		
 }
 
 void Game::agentmenu()
@@ -492,6 +519,7 @@ void Game::agentmenu()
 						this->endGame = true;
 						this->closewindow();
 					}
+					this->window->clear();
 				
 				}
 }
@@ -671,27 +699,32 @@ void Game::movePlatY()
 }
 
 void Game::movePlatX() 
-{
+{   
 	for (int i=0;i<nop;i++)
 	{ 
 		if(this->movement_check[i]==1)
-		{
-			this->platformX[i]+=this->plat_velocityX;
- 			if(this->platformX[i]<0||this->platformX[i]>520)
+		{	
+			this->platformX[i]+=(this->plat_velocityX[i]*(this->difficulty+1));
+ 			if(this->platformX[i]<0||this->platformX[i]>480)
  			{
- 			 	this->plat_velocityX *=-1;
+ 			 	this->plat_velocityX[i] *=-1;
  			 	
 			}	
 		}
 	}
 }
 
+
+
 void Game::updateScores()
 {
-	this->score += 20;
+	this->score += 20 * (this->difficulty % 2);
 	if(this->score > this->highscore)
 	{
+		if(this->highscored == false)
+			this->highscore_sfx.play();
 		this->highscore = this->score;
+		this->highscored = true;
 		std::ofstream scorefile;
 		scorefile.open("highscore.dat", std::ios::binary);
 		scorefile.write(reinterpret_cast<char*>(&highscore),sizeof(highscore));
@@ -700,11 +733,11 @@ void Game::updateScores()
 	}
 }
 void Game::generatePlat() 
-{   
+{   int random;
 	for (int i = 0; i < nop; i++) 
 	{
 		if (this->platformY[i] > 800) 
-		{
+		{  
 			
 			if(this->firstjump)
 				this->updateScores();
@@ -713,13 +746,29 @@ void Game::generatePlat()
 	  		{    
 //     		 	this->check_plat_movement=true;
      		 	this->movement_check[i]=1;
+     		 	this->plat_velocityX[i]=1;
 			}
     		else
     		{
     	    	this->movement_check[i]=0;	
 			}
+			
 			this->platformX[i] = (rand() % 400);
-			this->platformY[i] = (rand() % 10);
+			this->platformY[i] = (this->platformY[this->last_generated_plat]-100-(rand()%50));
+			this->last_generated_plat=i;
+			this->generated_plat_count+=1;
+		    this->difficulty=(this->generated_plat_count*0.15);
+		    if(this->difficulty>5)
+		    {
+		    	this->difficulty=4;
+			}
+			if(this->generated_plat_count > 20)
+			{
+				this->isEnemy = true;
+				this->enemyposY = 750;
+			}
+			
+			
     	}
   	} 
 }
@@ -761,8 +810,9 @@ void Game::boundaryMovement()
 void Game::detectCollision() 
 {
 	for (int i = 0; i < 8; i++) 
-	{
-    	if (new_pos_x < (this->platformX[i] + 75) &&new_pos_x > (this->platformX[i] -50))
+	{    if(this->doodle_direction==0)
+	    {
+	    if ((new_pos_x+35) < (this->platformX[i] + 100) &&((new_pos_x+88) > (this->platformX[i])))
 		{
       		if (  new_pos_y < (this->platformY[i] - 70) && new_pos_y> (this->platformY[i] - 120) ) 
 			{
@@ -778,14 +828,43 @@ void Game::detectCollision()
         		}
       		}
      	}	
+	    	
+	    	
+		}
+		if(this->doodle_direction==1)
+		{
+			if ((new_pos_x+5) < (this->platformX[i] + 100) &&(new_pos_x +60)> (this->platformX[i]))
+		{
+      		if (  new_pos_y < (this->platformY[i] - 70) && new_pos_y> (this->platformY[i] - 120) ) 
+			{
+        		if ((this->platformY[i] + 50) < 800) 
+				{
+
+          			dy = -13;
+          			this->movePlatY();     
+					this->firstjump = true;     
+          			change = 700 - this->platformY[i];
+					this->jump_sfx.play();
+          			break;
+        		}
+      		}
+     	}	
+	    
+			
+			
+			
+		}
+		
+    		
 	}
 }
+
 
 void Game::updateDoodle() 
 {
 	int diff, x = 0, z;
- 	dy += 0.25;
-  	new_pos_y += dy;
+ 	dy += 0.30;
+  	new_pos_y += 1.5*dy;
   	if (new_pos_y > 700) 
 	{
     	dy = -13;
@@ -803,6 +882,7 @@ void Game::updateDoodle()
 	this->generatePlat();
 	this->movePlatX();  	
 	this->boundaryMovement();
+	this->moveEnemy();
 
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) // can be replaced by anything
   	{
@@ -810,6 +890,21 @@ void Game::updateDoodle()
     	this->pausemusic();
     	this->gameover_sfx.play();
   	}
+}
+
+void Game::moveEnemy()
+{
+	this->enemyposX = this->new_pos_x;
+	this->enemyposY = this->enemyposY - 1;
+	if(this->isEnemy)
+	{
+		if(this->enemyposY < (this->new_pos_y + 50))
+		{
+			this->GameOver = true;
+			this->pausemusic();
+			this->gameover_sfx.play();
+		}
+	}
 }
 
 int Game::random_XPosition()
@@ -837,6 +932,7 @@ void Game::stopmusic()
 	this->bg_music.stop();
 }
 
+
 void Game::renderPlatform() 
 {
   	int x1, y1;
@@ -844,13 +940,7 @@ void Game::renderPlatform()
 	t2.loadFromFile("images/platform.png");
 	std::vector<sf::Sprite> s2(nop, sf::Sprite(t2));
 
-  //	  if(this->firstplatforms == true)
-  //      	{
-  //			this->platformX[0] = 300;
-  //      		this->platformY[0] = 750;
-  //        }
-  //	   	s2[0].setPosition(300,750);
-  //    	this->window->draw(s2[0]);
+
 
 	for (int i = 0; i < nop; i++) 
 	{
@@ -865,7 +955,7 @@ void Game::renderPlatform()
 			else 
 			{
         		this->platformX[i] = (rand() % 400);
-        		this->platformY[i] = (rand() % 100) + (i + 1) * 100;
+        		this->platformY[i] = (rand() % 100) + (i + 1) * 150;
       		}
     	}
 		s2[i].setPosition(this->platformX[i], this->platformY[i]);
@@ -873,7 +963,6 @@ void Game::renderPlatform()
   	}
 	this->firstplatforms = false;
 }
-
 
 
 
@@ -909,6 +998,22 @@ void Game::renderDoodle()
     	this->window->draw(s9);
 	}    
 
+}
+
+void Game::renderEnemy()
+{
+	sf::Texture t99;
+	if(this->agent_type == 1)
+	{
+		t99.loadFromFile("images/gunda_right.png");
+	}
+	if(this->agent_type == 2)
+	{
+		t99.loadFromFile("images/doodle_right.png");
+	}
+	sf::Sprite s99(t99);
+	s99.setPosition(this->enemyposX, this->enemyposY - 1);
+	this->window->draw(s99);	
 }
 void Game::renderBackground()
 {
@@ -1076,8 +1181,10 @@ void Game::render()
 	this->renderPlatform();
 	this->renderScoreboard();
 	this->renderDoodle();
-	
-	
+	if(this->isEnemy)
+	{
+		this->renderEnemy();
+	}
 
 	this->window->display();
 }
@@ -1128,3 +1235,5 @@ void Game::displayAgentSelect()
     this->window->display();
 		
 }
+
+

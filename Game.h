@@ -1,5 +1,4 @@
 
-
 #pragma once
 #include<dos.h>
 #include<iostream>
@@ -48,11 +47,15 @@ private:
     sf::Sound jump_sfx;
     sf::SoundBuffer buffer_jump;
     
+    sf::Sound highscore_sfx;
+    sf::SoundBuffer buffer_highscore;
+    
     
 
 
 	//Game logic
 	bool endGame;
+	bool highscored;
 	
 	int doodle_direction; //1 for right , 0 for left
 
@@ -68,8 +71,9 @@ private:
 	int nop;
 	int platformX[8];
 	int platformY[8];
-	float plat_velocityX;
+	float plat_velocityX[8];
 	int movement_check[8];
+	int level_plat_count;
 	
 	//scores
 	int score;
@@ -101,8 +105,14 @@ public:
 	bool firstrender;
 	bool GameOver;
 	bool agentChoice;
+	bool isEnemy;
+	
 	unsigned mainmenu_choice;
 	unsigned gameover_choice;
+	int last_generated_plat;
+	int random;
+	int generated_plat_count;
+	int difficulty;
 	
 	//Accessors
 	const bool running() const;
@@ -115,6 +125,9 @@ public:
 	int random_XPosition();
 	int random_YPosition();
 	int agent_type;
+	
+	float enemyposX;
+	float enemyposY;
 	
 	void playmusic();
 	void pausemusic();
@@ -129,6 +142,7 @@ public:
 	void renderPlatform();
 	void renderDoodle();
 	void renderGameOver();
+	void renderEnemy();
 	
 	void renderScoreboard();
 	void renderScoreTitle();
@@ -153,6 +167,7 @@ public:
 	int positionY();
 	void boundaryMovement();
 	void movePlatX();
+	void moveEnemy();
 
 	void mainmenu();
 	void agentmenu();
